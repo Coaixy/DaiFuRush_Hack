@@ -4,20 +4,38 @@
 #include <iostream>
 #include "lib.h"
 #include <string>
+#include <thread>
+
+std::string func_list[6] = {
+		"无限子弹","RPG","无敌","踏空跳","超级穿透","秒杀"
+};
+std::string on_list[6] = {
+	"关闭","关闭","关闭","关闭","关闭","关闭"
+};
+
+int length = sizeof(func_list) / sizeof(func_list[0]);
+std::wstring game_name = L"DaifuRushByMutangM.exe";
+DWORD game_id = FindProcessId(game_name);
+HANDLE game_handle = getProcessHandle(game_id);
+uintptr_t modBaseAddres = GetModuleBaseAddress(game_id, L"mono-2.0-bdwgc.dll");
+
+
+template <typename var>
+void t(int index,var value,int offset_num,uintptr_t offsets[],uintptr_t last_offset) {
+	while (on_list[index] == "开启") {
+		uintptr_t address = FindPointer(game_handle, modBaseAddres, offset_num, offsets)+last_offset;
+		//std::cout << std::hex << address << std::endl;
+		WriteMem<var>(game_handle,address, value);
+	}
+}
+
 int main()
 {
-	std::string func_list[6] = {
-		"无限子弹","RPG","无敌","踏空跳","超级穿透","秒杀"
-	};
-	std::string on_list[6] = {
-		"关闭","关闭","关闭","关闭","关闭","关闭"
-	};
-	int length = sizeof(func_list) / sizeof(func_list[0]);
-	std::wstring game_name = L"DaifuRushByMutangM.exe";
-	DWORD game_id = FindProcessId(game_name);
-	HANDLE game_handle= getProcessHandle(game_id);
-	uintptr_t modBaseAddres = GetModuleBaseAddress(game_id, L"mono-2.0-bdwgc.dll");
-	exit(0);
+	//std::cout << std::hex << read_mem<int64_t>(game_handle, 0x2d734ffad10 +0x198, 0);
+	//uintptr_t offsets[] = {0x007C2C08,0x198,0x4c0,0x38,0x20};
+	//std::cout <<std::hex << FindPointer(game_handle,modBaseAddres,5,offsets)+0x9c;
+	//WriteMem<int>(game_handle, FindPointer(game_handle, modBaseAddres, 5, offsets) + 0x9c, 2);
+	//exit(0);
 	Gui(func_list, on_list, length);
 
 
@@ -34,15 +52,98 @@ int main()
 		{
 		case WM_HOTKEY:
 		{
-			if (msg.wParam == 0)
-			{
-				// "mono-2.0-bdwgc.dll"+007C2C08 198 4c0 38 20 9c
-			}
-			//198 4c0 39 20 7c
+			//"mono-2.0-bdwgc.dll"+007C2C08
+			//198 4c0 38 20 9c
+			//198 4c0 38 20 7c
 			//198 4c0 30 20 110 55
 			//198 4c0 30 20 168
 			//198 4c0 38 20 8c
 			//198 4c0 38 20 84
+			if (msg.wParam == 0)
+			{
+				if (on_list[0] == "关闭")
+				{
+					on_list[0] = "开启";
+					uintptr_t offsets[] = { 0x007C2C08,0x198,0x4c0,0x38,0x20 };
+					std::thread t1(t<int>,0,0,5,offsets,0x9c);
+					t1.detach();
+				}
+				else {
+					on_list[0] = "关闭";
+				}
+			}
+			if (msg.wParam == 1)
+			{
+				uintptr_t offsets[] = { 0x007C2C08,0x198,0x4c0,0x38,0x20 };
+				uintptr_t address = FindPointer(game_handle, modBaseAddres, 5, offsets) + 0x7c;
+				if (on_list[1] == "关闭")
+				{
+					on_list[1] = "开启";
+					WriteMem<int>(game_handle, address, 2);
+				}
+				else {
+					on_list[1] = "关闭";
+					WriteMem<int>(game_handle, address, 1);
+				}
+			}
+			if (msg.wParam == 2)
+			{
+				uintptr_t offsets[] = { 0x007C2C08,0x198,0x4c0,0x30,0x20,0x110 };
+				uintptr_t address = FindPointer(game_handle, modBaseAddres, 6, offsets) + 0x55;
+				if (on_list[2] == "关闭")
+				{
+					on_list[2] = "开启";
+					WriteMem<int>(game_handle, address, 1);
+				}
+				else {
+					on_list[2] = "关闭";
+					WriteMem<int>(game_handle, address, 0);
+				}
+			}
+			if (msg.wParam == 3)
+			{
+				if (on_list[3] == "关闭")
+				{
+					on_list[3] = "开启";
+					uintptr_t offsets[] = { 0x007C2C08,0x198,0x4c0,0x30,0x20 };
+					std::thread t1(t<int>, 0, 0, 5, offsets, 0x168);
+					t1.detach();
+				}
+				else {
+					on_list[3] = "关闭";
+				}
+			}
+
+			if (msg.wParam == 4)
+			{
+				uintptr_t offsets[] = { 0x007C2C08,0x198,0x4c0,0x38,0x20 };
+				uintptr_t address = FindPointer(game_handle, modBaseAddres, 5, offsets) + 0x8c;
+				if (on_list[4] == "关闭")
+				{
+					on_list[4] = "开启";
+					WriteMem<float>(game_handle, address, 200);
+				}
+				else {
+					on_list[4] = "关闭"; 
+					WriteMem<float>(game_handle, address, 0);//本来应该记录原来的数值
+				}
+			}
+
+			if (msg.wParam == 5)
+			{
+				uintptr_t offsets[] = { 0x007C2C08,0x198,0x4c0,0x38,0x20 };
+				uintptr_t address = FindPointer(game_handle, modBaseAddres, 5, offsets) + 0x84;
+				if (on_list[5] == "关闭")
+				{
+					on_list[5] = "开启";
+					WriteMem<float>(game_handle, address, -2000);
+				}
+				else {
+					on_list[5] = "关闭";
+					WriteMem<float>(game_handle, address, -20);//本来应该记录原来的数值
+				}
+			}
+
 
 			if (msg.wParam == 6)
 			{
@@ -55,6 +156,8 @@ int main()
 				UnregisterHotKey(GetActiveWindow(), 6);
 				exit(0);
 			}
+
+			Gui(func_list, on_list, length);
 		}
 		default:
 			break;

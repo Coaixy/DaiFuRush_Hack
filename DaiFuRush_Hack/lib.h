@@ -4,7 +4,7 @@
 #include <iostream>
 #include <TlHelp32.h>
 #include <string>
-
+#include <vector>
 DWORD FindProcessId(const std::wstring& processName)
 {
 	PROCESSENTRY32 processInfo;
@@ -38,25 +38,44 @@ HANDLE getProcessHandle(DWORD pid) {
 	return OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid);
 }
 
-void WriteMemory(HANDLE g_processHandle, void* value, DWORD valueSize, ...)
-{
-	if (value == NULL || valueSize == 0 || g_processHandle == NULL) return;
-
-	DWORD tempValue = 0;
-
-	va_list addresses;
-	va_start(addresses, valueSize);
-	DWORD offset = 0;
-	DWORD lastAddress = 0;
-	while ((offset = va_arg(addresses, DWORD)) != -1)
-	{
-		lastAddress = tempValue + offset;
-		::ReadProcessMemory(g_processHandle, (LPCVOID)lastAddress, &tempValue, sizeof(DWORD), NULL);
-	}
-	va_end(addresses);
-
-	::WriteProcessMemory(g_processHandle, (LPVOID)lastAddress, value, valueSize, NULL);
+template <typename var>
+bool WriteMem(HANDLE processHandle,uintptr_t address,var value) {
+	return WriteProcessMemory(processHandle, (LPVOID)address, &value, sizeof(var), NULL);
 }
+
+template <typename var>
+var ReadMem(HANDLE processHandle,uintptr_t address,var defaultValue) {
+	var value;
+	ReadProcessMemory(processHandle, (LPCVOID)address, &value, sizeof(var), NULL);
+	return value;
+}
+
+uintptr_t FindPointer(HANDLE processHandle,uintptr_t moduleBaseAddress, int offset_num, uintptr_t offsets[])
+{
+	if (offset_num <= 0) {
+		return NULL;
+	}
+
+	int64_t Address = moduleBaseAddress + offsets[0];
+	Address = ReadMem<int64_t>(processHandle,Address, 0);
+	//ReadProcessMemory(processHandle, (LPCVOID)Address, &Address, sizeof(DWORD), NULL);
+
+	if (Address == 0) {
+		return NULL;
+	}
+
+	for (int i = 1; i < offset_num; i++) //Loop trough the offsets
+	{
+		Address += offsets[i];
+		Address = ReadMem<int64_t>(processHandle,Address, 0);
+		//ReadProcessMemory(processHandle, (LPCVOID)Address, &Address, sizeof(DWORD), NULL);
+		if (Address == 0) {
+			return NULL;
+		}
+	}
+	return Address;
+}
+
 
 uintptr_t GetModuleBaseAddress(DWORD procId, const wchar_t* modName)
 {
@@ -82,6 +101,7 @@ uintptr_t GetModuleBaseAddress(DWORD procId, const wchar_t* modName)
 	CloseHandle(hSnap);
 	return modBaseAddr;
 }
+
 void Gui(std::string a[],std::string b[],int length) {
 	system("cls");
 	for (size_t i = 0; i < length; i++)
@@ -89,7 +109,4 @@ void Gui(std::string a[],std::string b[],int length) {
 		std::cout << "F" << i+1  << " " << a[i] << " " << b[i] << std::endl;
 	}
 	std::cout << "F7 退出" << std::endl;
-}
-void switchOn(std::string a[], std::string b[],int length) {
-
 }
